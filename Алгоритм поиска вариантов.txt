@@ -1,0 +1,73 @@
+/*Это общая функция для получения всех вариантов того или иного BuildSet'а
+Если что, здесь не учитывается наличие цеха сборки. Фронтенд будет дергать бэк с целью поиска всех вариантов доставки того или иного BuildSet'а
+Это может быть как часть цеха сборки, так и нет*/
+
+
+
+desireJSON: {
+  objectCoords:{longitude:double,latitude:double},//координаты объекта, на который мы будем доставлять материалы. Напоминание: объект содержит несколько сооружений
+  buildSet: {count, material_Id},
+  transportIds: [transport_id1, transport_id2,...,transport_idN]
+}//информация, пришедшая с фронтенда
+
+dynamic parsed=ParseFromJson(desireJson); 
+TransportRequest desire=ConvertFromParsed(parsed);//transportId преобразовывает в список полноценных объектов транспортов. Остальные объекты оставляет в исходном виде
+
+BuildSet set=desire.buildSet;
+Coordination objectCoords=desire.objectCoords;
+List<Transport> transports=desire.transports;
+
+List<Manufacturer> creators=getManufacturers(set,transports);
+creators.filterTransports(transports);//оставляет только те транспорты, которые есть списке transports
+List<LogisticCompany> logists=getLogistsWithTransport(transports);
+logists.filterTransports(transports);//оставляет только те транспорты, которые есть списке transports
+
+
+List<TransportVariant> variants=formVariants(set,mine.coordination, creators, logists);
+
+List<TransportVariant> formVariants(BuildSet set, Coordination objectCoord,List<Manufacturer> creators,List<LogisticCompany> logists)
+{
+ List<Storage> storages=getStorages(set,creators);//берёт склады, где есть хотя бы одна единица материала из BuildSet'а
+ 
+ List<Storage> storagesWithTransport=selectStoragesWithTransport(storages,transport);//выбирает склады, производители которых имеют транспорты из списка transports
+ List<Storage> storagesSansTransport=selectStoragesSansTransport(storages,transport);//выбирает склады, производители которых НЕ имеют транспортов из списка transports
+ 
+ 
+ List<TransportVariant> withTransport=formVariantsForMansWithTransport(set,storagesWithTransport,objectCoord);
+ List<TransportVariant> sansTransport=formVariantsForMansSansTransport(set,storagesSansTransport,objectCoord,logists);
+ List<TransportVariant> result=withTransport;
+ result.AddRange(sansTransport);
+ return result;
+}
+
+List<TransportVariant> formVariantsForMansSansTransport(BuildSet set, List<Storage> storages, Coordination objectCoord,List<LogisticCompany> logists)
+{
+ List<TransportVariant> variants=new();
+ foreach(var s in storages){
+  Manufacturer m=s.manufacturer;
+  Coordination storageCoord=s.coords;
+  foreach(var log in logists)
+  {
+   foreach(var tr in log.transports)
+   {
+    TransportVariant variant=new(set,storageCoord,objectCoord,m,log,tr);
+    variants.Add(variant);
+   }
+  }
+ }
+ retrun variants;
+}
+List<TransportVariant> formVariantsForMansWithTransport(BuildSet set,List<Storage> storages, Coordination objectCoord)
+{
+ List<TransportVariant> variants=new();
+ foreach(var s in storages)
+ {
+  Manufacturer m=s.manufacturer;
+  foreach(var tr in m.transports)
+  {
+   TransportVariant variant=new(set,s.coords,objectCoord,m,null,tr);//логистическая компания у меня равняется null, т.е её просто нет
+   variants.Add(variant); 
+  }
+ }
+ return variants;
+}
