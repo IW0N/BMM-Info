@@ -21,13 +21,19 @@ List<Transport> transports=desire.transports;
 
 List<Manufacturer> creators=getManufacturers(set,transports);
 List<ManufacturerState> states=creators.
-    Where(c=>c.haveMaterial(set.material)).
+    Where(c=>c.haveMaterial(set.material)).//проверка на то, имеет ли указанный производитель необходимые материалы 
     Select(c=>buildState(c,objectId))
 List<LogisticCompany> logists=getTotalLogists()
 List<Manufacturer> canDeliver=states.Where(s=>!s.needLogist);
 List<Manufacturer> cantDeliver=states.Where(s=>s.needLogist);
 
-formVariantsForCant(BuildSet bSet,GazpromObject gObject,List<Manufacturer> cantDeliver)
+List<TransportVariant> variantsForCant=formVariantForCant(set,_object,cantDeliver);
+List<TransportVariant> variantsForCan=formVariantsForCan(set,_object,canDeliver);
+var variants=variantsForCan;
+variants.AddRange(varaintsForCant);//конечный список вариантов, которые нужно будет вернуть
+
+
+List<TransportVariant> formVariantsForCant(BuildSet bSet,GazpromObject gObject,List<Manufacturer> cantDeliver)
 {
   List<TransportVariant> variants=new()
   foreach(var l in logists)
@@ -36,22 +42,46 @@ formVariantsForCant(BuildSet bSet,GazpromObject gObject,List<Manufacturer> cantD
     {
       foreach(var storage in m.Storages)
       {
-        foreach(var t in l.transports)
+        
+        bool storageHasMaterial=storage.hasMaterial(bSet.material);//если на складе количество того или иного материала больше, чем 0
+        if(storageHasMaterial)
         {
-          bool canTransport=t.canTransportTo(objectId)
-          if(canTransport)
+          foreach(var t in m.transports)
           {
-            TransportVariant variant=new(bSet,m,l,gObject.point,storage.point,t)
-            variants.Add(variant);
+            bool canTransport=t.canTransportTo(objectId)
+            if(canTransport)
+            {
+              TransportVariant variant=new(bSet,m,l,gObject.coords,storage.coords,t)
+              variants.Add(variant);
+            }
           }
         }
       }
     }
   }
-
+  return variants;
 }
-List<ManufacturerState> buildState(Manufacturer creator,int objectId)
+formVariantForCan(BuildSet bSet,GazpromObject gObject,List<Manufacturer> canDeliver){
+  List<TransportVariant> variants=new();
+  foreach(var m in cantDeliver)
+  {
+    foreach(var storage in m.Storages)
+    {
+      foreach(var t in l.transports)
+      {
+        bool canTransport=t.canTransportTo(objectId)
+        if(canTransport)
+        {
+          TransportVariant variant=new(bSet,m,l,gObject.point,storage.point,t)
+          variants.Add(variant);
+        }
+      }
+    }
+  }
+  return variants;
+}
+ManufacturerState buildState(Manufacturer creator,int objectId)
 {
-  bool canDeliver=creator.CanDelieverTo(objectId);
+  bool canDeliver=creator.CanDelieverTo(objectId);//нужно как-то определять, доставляет ли производитель до нужного объекта или нет. Вроде это записано в БД
   return new ManufacturerState(creator,canDeliver)
 }
