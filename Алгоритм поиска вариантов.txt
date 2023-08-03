@@ -27,21 +27,22 @@ List<LogisticCompany> logists=getTotalLogists()
 List<Manufacturer> canDeliver=states.Where(s=>!s.needLogist);
 List<Manufacturer> cantDeliver=states.Where(s=>s.needLogist);
 
-formVariantsForCant(BuildSet bSet,int objectId,List<Manufacturer> cantDeliver)
+formVariantsForCant(BuildSet bSet,GazpromObject gObject,List<Manufacturer> cantDeliver)
 {
   List<TransportVariant> variants=new()
   foreach(var l in logists)
   {
     foreach(var m in cantDeliver)
     {
-      foreach()
+      foreach(var storage in m.Storages)
       {
         foreach(var t in l.transports)
         {
           bool canTransport=t.canTransportTo(objectId)
           if(canTransport)
           {
-            TransportVariant variant=new(bSet,m,l,)
+            TransportVariant variant=new(bSet,m,l,gObject.point,storage.point,t)
+            variants.Add(variant);
           }
         }
       }
@@ -49,7 +50,7 @@ formVariantsForCant(BuildSet bSet,int objectId,List<Manufacturer> cantDeliver)
   }
 
 }
-buildState(Manufacturer creator,int objectId)
+List<ManufacturerState> buildState(Manufacturer creator,int objectId)
 {
   bool canDeliver=creator.CanDelieverTo(objectId);
   return new ManufacturerState(creator,canDeliver)
